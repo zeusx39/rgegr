@@ -1,91 +1,211 @@
 const API_URL = window.location.origin;
+let currentStep = 1;
+let selectedDevice = 'universal';
+let parsedCookies = [];
 
 // Show/Hide Sections
 function showSection(sectionId) {
-  // Hide all sections
   document.querySelectorAll('.section').forEach(section => {
     section.classList.remove('active');
   });
 
-  // Remove active class from nav links
   document.querySelectorAll('.nav-link').forEach(link => {
     link.classList.remove('active');
   });
 
-  // Show selected section
   document.getElementById(sectionId).classList.add('active');
-
-  // Add active class to clicked nav link
   event.target.classList.add('active');
 
-  // Load data if needed
   if (sectionId === 'manage') {
     loadCookies();
   }
 }
 
+// Step Navigation
+function nextStep() {
+  if (currentStep === 1) {
+    // Validate cookies
+    const cookieText = document.getElementById('cookieInput').value.trim();
+    if (!cookieText) {
+      alert('Por favor, cole seus cookies');
+      return;
+    }
+    parseCookiesFromText(cookieText);
+  } else if (currentStep === 2) {
+    if (!selectedDevice) {
+      alert('Por favor, selecione um dispositivo');
+      return;
+    }
+  }
+
+  currentStep++;
+  updateSteps();
+}
+
+function prevStep() {
+  currentStep--;
+  updateSteps();
+}
+
+function updateSteps() {
+  document.querySelectorAll('.form-step').forEach(step => {
+    step.classList.remove('active');
+  });
+  document.getElementById(`step${currentStep}`).classList.add('active');
+
+  document.querySelectorAll('.step').forEach((step, index) => {
+    if (index + 1 < currentStep) {
+      step.classList.add('active');
+    } else if (index + 1 === currentStep) {
+      step.classList.add('active');
+    } else {
+      step.classList.remove('active');
+    }
+  });
+}
+
+function selectDevice(device) {
+  selectedDevice = device;
+  document.querySelectorAll('.device-option').forEach(option => {
+    option.classList.remove('selected');
+  });
+  document.querySelector(`[data-device="${device}"]`).classList.add('selected');
+}
+
+// Parse Cookies
+function parseCookiesFromText(text) {
+  const cookies = [];
+  const lines = text.split('\n');
+
+  lines.forEach(line => {
+    line = line.trim();
+    // Skip empty lines and headers
+    if (line && line.includes('=') && !line.includes('Criado') && !line.includes('Expira') && !line.includes('===')) {
+      const eqIndex = line.indexOf('=');
+      if (eqIndex > 0) {
+        const name = line.substring(0, eqIndex).trim();
+        const value = line.substring(eqIndex + 1).trim();
+
+        if (name && value && name.length > 0) {
+          cookies.push({ name, value });
+        }
+      }
+    }
+  });
+
+  if (cookies.length === 0) {
+    alert('Nenhum cookie válido encontrado. Use o formato: nome=valor');
+    return;
+  }
+
+  parsedCookies = cookies;
+}
+
 // Save Cookies
 async function saveCookies() {
-  const sessionName = document.getElementById('sessionName').value;
-  const cookieText = document.getElementById('cookieInput').value;
+  const sessionName = document.getElementById('sessionName').value || 'Sem nome';
   const expiryType = document.getElementById('expiryType').value;
 
-  if (!cookieText.trim()) {
-    alert('Por favor, cole seus cookies');
+  if (parsedCookies.length === 0) {
+    alert('Nenhum cookie para salvar');
     return;
   }
 
   try {
-    // Parse cookies
-    const parseResponse = await fetch(`${API_URL}/api/parse-cookies`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text: cookieText })
-    });
-
-    if (!parseResponse.ok) {
-      const error = await parseResponse.json();
-      alert('Erro ao parsear cookies: ' + error.error);
-      return;
-    }
-
-    const parseData = await parseResponse.json();
-    const cookies = parseData.cookies;
-
-    // Save cookies
-    const saveResponse = await fetch(`${API_URL}/api/save-cookies`, {
+    const response = await fetch(`${API_URL}/api/save-cookies`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: sessionName,
-        cookies: cookies,
-        expiryTime: 1,
-        expiryType: expiryType
+        cookies: parsedCookies,
+        expiryType: expiryType,
+        deviceType: selectedDevice
       })
     });
 
-    if (!saveResponse.ok) {
-      const error = await saveResponse.json();
-      alert('Erro ao salvar: ' + error.error);
+    if (!response.ok) {
+      const error = await response.json();
+      alert('Erro: ' + error.error);
       return;
     }
 
-    const result = await saveResponse.json();
-
-    // Show result
-    const resultBox = document.getElementById('saveResult');
-    document.getElementById('shareLink').value = result.link;
-    document.getElementById('expiryInfo').textContent = 
-      `Expira em: ${result.expiresAt}`;
-    resultBox.classList.remove('hidden');
-
-    // Clear form
-    document.getElementById('cookieInput').value = '';
-    document.getElementById('sessionName').value = '';
-
+    const result = await response.json();
+    showResult(result);
   } catch (error) {
     alert('Erro: ' + error.message);
   }
+}
+
+function showResult(result) {
+  document.getElementById('shareLink').value = result.shareLink;
+  
+  const deviceEmoji = {
+    pc: '🖥️ PC / Desktop',
+    mobile: '📱 Celular / Tablet',
+    tv: '📺 Smart TV',
+    universal: '🌐 Qualquer Dispositivo'
+  };
+
+  const expiryText = {
+    '15min': '15 minutos',
+    '1hour': '1 hora',
+    '6hours': '6 horas',
+    '24hours': '24 horas',
+    '7days': '7 dias',
+    'never': 'Nunca'
+  };
+
+  const info = `
+    <strong>Cookies:</strong> ${parsedCookies.length}<br>
+    <strong>Dispositivo:</strong> ${deviceEmoji[result.deviceType]}<br>
+    <strong>Expiração:</strong> ${expiryText[result.expiryType]}<br>
+    <strong>Criado em:</strong> ${new Date().toLocaleString('pt-BR')}
+  `;
+
+  document.getElementById('resultInfo').innerHTML = info;
+  document.getElementById('saveResult').classList.remove('hidden');
+}
+
+function copyShareLink() {
+  const link = document.getElementById('shareLink').value;
+  navigator.clipboard.writeText(link).then(() => {
+    alert('✅ Link copiado com sucesso!');
+  });
+}
+
+function qrCode() {
+  const link = document.getElementById('shareLink').value;
+  const modal = document.getElementById('qrModal');
+  const qrContainer = document.getElementById('qrCode');
+  qrContainer.innerHTML = '';
+
+  new QRCode(qrContainer, {
+    text: link,
+    width: 256,
+    height: 256,
+    colorDark: '#00d4ff',
+    colorLight: '#1a1a1a'
+  });
+
+  document.getElementById('qrUrl').textContent = link;
+  modal.classList.remove('hidden');
+}
+
+function closeQR() {
+  document.getElementById('qrModal').classList.add('hidden');
+}
+
+function resetForm() {
+  currentStep = 1;
+  selectedDevice = 'universal';
+  parsedCookies = [];
+  document.getElementById('cookieInput').value = '';
+  document.getElementById('sessionName').value = '';
+  document.getElementById('saveResult').classList.add('hidden');
+  document.querySelectorAll('.device-option').forEach(option => {
+    option.classList.remove('selected');
+  });
+  updateSteps();
 }
 
 // Load Cookies List
@@ -95,48 +215,47 @@ async function loadCookies() {
     const cookies = await response.json();
 
     const list = document.getElementById('cookiesList');
-    
-    if (cookies.length === 0) {
-      list.innerHTML = '<p class="loading">Nenhum cookie salvo</p>';
+
+    if (!Array.isArray(cookies) || cookies.length === 0) {
+      list.innerHTML = '<p class="loading">Nenhum link criado</p>';
       return;
     }
+
+    const deviceEmoji = {
+      pc: '🖥️',
+      mobile: '📱',
+      tv: '📺',
+      universal: '🌐'
+    };
 
     list.innerHTML = cookies.map(cookie => `
       <div class="cookie-item">
         <div class="cookie-info">
           <h3>${cookie.name}</h3>
+          <p>${deviceEmoji[cookie.deviceType] || '🌐'} ${cookie.deviceType ? cookie.deviceType.toUpperCase() : 'Universal'}</p>
           <p>🍪 ${cookie.cookieCount} cookies</p>
-          <p>📅 Criado: ${new Date(cookie.createdAt).toLocaleString('pt-BR')}</p>
+          <p>📅 ${new Date(cookie.createdAt).toLocaleString('pt-BR')}</p>
           <p>⏰ Expira: ${cookie.expiresAt ? new Date(cookie.expiresAt).toLocaleString('pt-BR') : 'Nunca'}</p>
-          <p>👁️ Usado: ${cookie.usageCount} vezes</p>
+          <p>👁️ Acessado ${cookie.usageCount} vez${cookie.usageCount !== 1 ? 'es' : ''}</p>
         </div>
         <div class="cookie-actions">
-          <button onclick="copyShareLink('${cookie.token}')" class="btn btn-secondary btn-small">Copiar Link</button>
-          <button onclick="downloadCookies('${cookie.token}')" class="btn btn-secondary btn-small">Baixar TXT</button>
+          <button onclick="copyLinkFromList('${cookie.token}')" class="btn btn-secondary btn-small">Copiar</button>
+          <button onclick="downloadCookies('${cookie.token}')" class="btn btn-secondary btn-small">TXT</button>
           <button onclick="deleteCookies('${cookie.token}')" class="btn btn-danger">Deletar</button>
         </div>
       </div>
     `).join('');
   } catch (error) {
-    alert('Erro ao carregar: ' + error.message);
+    console.error('Erro ao carregar:', error);
+    alert('Erro ao carregar cookies: ' + error.message);
   }
 }
 
-// Copy Share Link
-async function copyShareLink(token) {
-  const link = `${API_URL}/inject?token=${token}`;
-  await copyToClipboard('text', link);
-}
-
-// Copy to Clipboard
-async function copyToClipboard(inputId, text = null) {
-  try {
-    const textToCopy = text || document.getElementById(inputId).value;
-    await navigator.clipboard.writeText(textToCopy);
-    alert('✅ Copiado para a área de transferência!');
-  } catch (error) {
-    alert('Erro ao copiar: ' + error.message);
-  }
+function copyLinkFromList(token) {
+  const link = `${API_URL}/share/${token}`;
+  navigator.clipboard.writeText(link).then(() => {
+    alert('✅ Link copiado com sucesso!');
+  });
 }
 
 // Download Cookies as TXT
@@ -151,7 +270,7 @@ function downloadCookies(token) {
 
 // Delete Cookies
 async function deleteCookies(token) {
-  if (!confirm('Tem certeza que deseja deletar?')) {
+  if (!confirm('Tem certeza que deseja deletar este link?')) {
     return;
   }
 
@@ -171,62 +290,7 @@ async function deleteCookies(token) {
   }
 }
 
-// Inject Cookies
-async function injectCookies() {
-  const input = document.getElementById('tokenInput').value.trim();
-  
-  if (!input) {
-    alert('Por favor, cole um token ou link');
-    return;
-  }
-
-  // Extract token from link if needed
-  let token = input;
-  if (input.includes('token=')) {
-    token = input.split('token=')[1];
-  }
-
-  try {
-    const response = await fetch(`${API_URL}/api/inject/${token}`);
-    
-    if (!response.ok) {
-      alert('Token inválido ou expirado!');
-      return;
-    }
-
-    const data = await response.json();
-    
-    // Set cookies in browser
-    data.cookies.forEach(cookie => {
-      document.cookie = `${cookie.name}=${cookie.value}; path=/; samesite=lax`;
-    });
-
-    // Show result
-    const resultBox = document.getElementById('injectResult');
-    document.getElementById('injectTitle').textContent = `✅ ${data.cookies.length} cookies injetados!`;
-    
-    const content = data.cookies.map(cookie => `
-      <div class="cookie-row">
-        <strong>${cookie.name}</strong> = ${cookie.value.substring(0, 50)}${cookie.value.length > 50 ? '...' : ''}
-      </div>
-    `).join('');
-    
-    document.getElementById('injectContent').innerHTML = content;
-    resultBox.classList.remove('hidden');
-
-  } catch (error) {
-    alert('Erro: ' + error.message);
-  }
-}
-
-// Check if we're on inject page
+// Initialize
 window.addEventListener('load', () => {
-  const urlParams = new URLSearchParams(window.location.search);
-  const token = urlParams.get('token');
-  
-  if (token) {
-    document.getElementById('tokenInput').value = token;
-    showSection('inject');
-    setTimeout(() => injectCookies(), 500);
-  }
+  updateSteps();
 });

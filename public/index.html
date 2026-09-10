@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cookie Share - Compartilhador Profissional de Cookies</title>
+  <title>🔐 Cookie Share - Compartilhador Profissional</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
+    <!-- Navbar -->
     <nav class="navbar">
       <div class="nav-content">
         <h1 class="logo">🔐 Cookie Share</h1>
         <div class="nav-links">
           <a href="#" class="nav-link active" onclick="showSection('home')">Home</a>
-          <a href="#" class="nav-link" onclick="showSection('save')">Salvar Cookies</a>
+          <a href="#" class="nav-link" onclick="showSection('save')">Criar Link</a>
           <a href="#" class="nav-link" onclick="showSection('manage')">Gerenciar</a>
-          <a href="#" class="nav-link" onclick="showSection('inject')">Injetar</a>
         </div>
       </div>
     </nav>
@@ -23,28 +23,28 @@
     <!-- Home Section -->
     <section id="home" class="section active">
       <div class="hero">
-        <h1>Compartilhe seus Cookies com Segurança</h1>
-        <p>Crie links únicos para compartilhar suas sessões entre dispositivos</p>
+        <h1>Compartilhe Cookies Entre Dispositivos</h1>
+        <p>Acesse qualquer site automaticamente de PC, Celular ou Smart TV</p>
         <div class="features">
           <div class="feature-card">
             <span class="icon">💾</span>
             <h3>Salvar</h3>
-            <p>Armazene seus cookies de forma segura</p>
+            <p>Extraia seus cookies de forma segura</p>
           </div>
           <div class="feature-card">
             <span class="icon">🔗</span>
             <h3>Compartilhar</h3>
-            <p>Crie links únicos e com expiração</p>
+            <p>Gere links com expiração configurável</p>
           </div>
           <div class="feature-card">
             <span class="icon">💉</span>
             <h3>Injetar</h3>
-            <p>Acesse automaticamente sem senha</p>
+            <p>Acesse sem precisar fazer login</p>
           </div>
           <div class="feature-card">
-            <span class="icon">⏰</span>
-            <h3>Controlar</h3>
-            <p>Defina tempo de expiração</p>
+            <span class="icon">📱</span>
+            <h3>Multi-Dispositivo</h3>
+            <p>PC, Celular, Tablet ou Smart TV</p>
           </div>
         </div>
       </div>
@@ -53,42 +53,113 @@
     <!-- Save Cookies Section -->
     <section id="save" class="section">
       <div class="form-container">
-        <h2>Salvar Cookies</h2>
+        <h2>Criar Link de Compartilhamento</h2>
         
-        <div class="input-group">
-          <label>Nome da Sessão (opcional)</label>
-          <input type="text" id="sessionName" placeholder="Ex: Chrome - PC" class="input-field">
+        <div class="step-indicator">
+          <div class="step active" data-step="1">
+            <span class="step-number">1</span>
+            <span class="step-label">Cookies</span>
+          </div>
+          <div class="step" data-step="2">
+            <span class="step-number">2</span>
+            <span class="step-label">Dispositivo</span>
+          </div>
+          <div class="step" data-step="3">
+            <span class="step-number">3</span>
+            <span class="step-label">Expiração</span>
+          </div>
         </div>
 
-        <div class="row">
+        <div id="step1" class="form-step active">
+          <div class="input-group">
+            <label>Cole seus Cookies</label>
+            <textarea id="cookieInput" class="textarea-field" placeholder="session_id=abc123...\nauth_token=xyz789...\nuser_pref=dark_mode"></textarea>
+            <small>Extraia seus cookies do navegador (F12 > Application > Cookies)</small>
+          </div>
+          <button onclick="nextStep()" class="btn btn-primary">Continuar</button>
+        </div>
+
+        <div id="step2" class="form-step">
+          <div class="input-group">
+            <label>Selecione o Dispositivo de Destino</label>
+            <div class="device-selector">
+              <div class="device-option" data-device="pc" onclick="selectDevice('pc')">
+                <span class="device-icon">🖥️</span>
+                <span class="device-name">PC / Desktop</span>
+              </div>
+              <div class="device-option" data-device="mobile" onclick="selectDevice('mobile')">
+                <span class="device-icon">📱</span>
+                <span class="device-name">Celular / Tablet</span>
+              </div>
+              <div class="device-option" data-device="tv" onclick="selectDevice('tv')">
+                <span class="device-icon">📺</span>
+                <span class="device-name">Smart TV</span>
+              </div>
+              <div class="device-option" data-device="universal" onclick="selectDevice('universal')">
+                <span class="device-icon">🌐</span>
+                <span class="device-name">Qualquer Dispositivo</span>
+              </div>
+            </div>
+          </div>
+          <div style="display: flex; gap: 1rem;">
+            <button onclick="prevStep()" class="btn btn-secondary" style="flex: 1;">Voltar</button>
+            <button onclick="nextStep()" class="btn btn-primary" style="flex: 1;">Continuar</button>
+          </div>
+        </div>
+
+        <div id="step3" class="form-step">
+          <div class="input-group">
+            <label>Nome da Sessão (opcional)</label>
+            <input type="text" id="sessionName" placeholder="Ex: Netflix - Meu PC" class="input-field">
+          </div>
+
           <div class="input-group">
             <label>Tempo de Expiração</label>
             <select id="expiryType" class="input-field">
-              <option value="15min">15 minutos</option>
-              <option value="1hour">1 hora</option>
-              <option value="6hours">6 horas</option>
-              <option value="24hours">24 horas</option>
-              <option value="7days">7 dias</option>
-              <option value="never" selected>Nunca</option>
+              <option value="15min">⏱️ 15 minutos</option>
+              <option value="1hour">⏰ 1 hora</option>
+              <option value="6hours">⏰ 6 horas</option>
+              <option value="24hours" selected>⏰ 24 horas</option>
+              <option value="7days">📅 7 dias</option>
+              <option value="never">♾️ Nunca expirar</option>
             </select>
           </div>
-        </div>
 
-        <div class="input-group">
-          <label>Cole seus Cookies (formato: nome=valor)</label>
-          <textarea id="cookieInput" class="textarea-field" placeholder="session_id=abc123&#10;auth_token=xyz789&#10;preferences=dark_mode"></textarea>
-        </div>
-
-        <button onclick="saveCookies()" class="btn btn-primary">Salvar Cookies</button>
-
-        <div id="saveResult" class="result-box hidden">
-          <h3>✅ Cookies Salvos!</h3>
-          <p>Compartilhe este link:</p>
-          <div class="result-content">
-            <input type="text" id="shareLink" readonly class="result-input">
-            <button onclick="copyToClipboard('shareLink')" class="btn btn-small">Copiar</button>
+          <div style="display: flex; gap: 1rem;">
+            <button onclick="prevStep()" class="btn btn-secondary" style="flex: 1;">Voltar</button>
+            <button onclick="saveCookies()" class="btn btn-primary" style="flex: 1;">Gerar Link</button>
           </div>
-          <p id="expiryInfo" class="expiry-info"></p>
+        </div>
+
+        <!-- Result -->
+        <div id="saveResult" class="result-box hidden">
+          <h3>✅ Link Gerado com Sucesso!</h3>
+          
+          <div class="result-section">
+            <h4>🔗 Link de Compartilhamento</h4>
+            <div class="result-content">
+              <input type="text" id="shareLink" readonly class="result-input">
+              <button onclick="copyShareLink()" class="btn btn-small">Copiar</button>
+              <button onclick="qrCode()" class="btn btn-small">QR Code</button>
+            </div>
+          </div>
+
+          <div class="result-section">
+            <h4>📊 Informações</h4>
+            <p id="resultInfo"></p>
+          </div>
+
+          <div class="result-section">
+            <h4>💡 Como Usar</h4>
+            <ol>
+              <li>Copie o link compartilhado</li>
+              <li>Abra em outro dispositivo</li>
+              <li>Os cookies serão injetados automaticamente</li>
+              <li>Atualizar a página para acessar a sessão</li>
+            </ol>
+          </div>
+
+          <button onclick="resetForm()" class="btn btn-secondary">Criar Outro Link</button>
         </div>
       </div>
     </section>
@@ -96,36 +167,27 @@
     <!-- Manage Section -->
     <section id="manage" class="section">
       <div class="manage-container">
-        <h2>Gerenciar Cookies Salvos</h2>
-        <button onclick="loadCookies()" class="btn btn-secondary">Atualizar</button>
+        <h2>Gerenciar Links</h2>
+        <button onclick="loadCookies()" class="btn btn-secondary">🔄 Atualizar</button>
         
         <div id="cookiesList" class="cookies-list">
           <p class="loading">Carregando...</p>
         </div>
       </div>
     </section>
-
-    <!-- Inject Section -->
-    <section id="inject" class="section">
-      <div class="inject-container">
-        <h2>Injetar Cookies</h2>
-        <p class="info-text">Cole o link ou token para injetar os cookies automaticamente</p>
-        
-        <div class="input-group">
-          <label>Token ou Link Completo</label>
-          <input type="text" id="tokenInput" placeholder="Cole o token ou link aqui" class="input-field">
-        </div>
-
-        <button onclick="injectCookies()" class="btn btn-primary">Injetar Cookies</button>
-
-        <div id="injectResult" class="result-box hidden">
-          <h3 id="injectTitle"></h3>
-          <div id="injectContent" class="inject-content"></div>
-        </div>
-      </div>
-    </section>
   </div>
 
+  <!-- QR Code Modal -->
+  <div id="qrModal" class="modal hidden">
+    <div class="modal-content">
+      <span class="close" onclick="closeQR()">&times;</span>
+      <h2>QR Code do Link</h2>
+      <div id="qrCode" style="text-align: center;"></div>
+      <p id="qrUrl" style="word-break: break-all; margin-top: 1rem;"></p>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
