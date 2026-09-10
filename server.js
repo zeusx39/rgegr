@@ -291,6 +291,7 @@ app.get('/share/:token', (req, res) => {
           word-break: break-all;
         }
         .cookie-row strong { color: #00d4ff; }
+        .small-note { color: #909090; font-size: 0.9rem; margin-top: 0.75rem; }
       </style>
     </head>
     <body>
@@ -317,7 +318,7 @@ app.get('/share/:token', (req, res) => {
           </div>
         </div>
 
-        <p style="color: #909090; margin-bottom: 1rem;">Clique no botão abaixo para injetar os cookies automaticamente no seu navegador</p>
+        <p style="color: #909090; margin-bottom: 1rem;">Escolha uma opção para injetar os cookies:</p>
         
         <div class="cookies-list">
           ${data.cookies && data.cookies.length > 0 ? data.cookies.map(c => `
@@ -327,22 +328,64 @@ app.get('/share/:token', (req, res) => {
           `).join('') : '<p>Nenhum cookie</p>'}
         </div>
 
-        <button class="btn" onclick="injectCookies()">💉 Injetar Cookies Agora</button>
+        <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;">
+          <button class="btn" onclick="setCookiesHere()">💉 Injetar Cookies no Domínio Atual</button>
+          <button class="btn" onclick="copyBookmarklet()">📎 Copiar Bookmarklet</button>
+          <a id="bookmarkletLink" class="btn" style="display:none; background: linear-gradient(135deg,#ffd166,#ff6b6b); color:#000;" href="#">Arraste para seus favoritos</a>
+        </div>
+
+        <p class="small-note">Observações: Cookies marcados como HttpOnly não podem ser definidos via JavaScript. Cookies com atributo Secure só funcionarão em conexões HTTPS. Para injetar em outro domínio, clique/cole o bookmarklet enquanto estiver no domínio alvo (arraste o botão acima para seus favoritos e clique nele na página do site).</p>
 
         <script>
-          function injectCookies() {
+          (function(){
             const cookies = ${JSON.stringify(data.cookies || [])};
-            cookies.forEach(cookie => {
-              document.cookie = cookie.name + '=' + cookie.value + '; path=/; max-age=31536000; samesite=lax';
+
+            function setCookiesHere() {
+              let injected = 0;
+              cookies.forEach(cookie => {
+                try {
+                  document.cookie = encodeURIComponent(cookie.name) + '=' + encodeURIComponent(cookie.value) + '; path=/; max-age=31536000; samesite=lax';
+                  injected++;
+                } catch (e) {
+                  // ignore
+                }
+              });
+              alert('✅ ' + injected + ' cookies injetados no domínio atual.\n\nNota: HttpOnly não pode ser definido via JS.');
+            }
+
+            function copyBookmarklet() {
+              try {
+                const payload = encodeURIComponent(JSON.stringify(cookies));
+                const bm = 'javascript:(function(){try{var cookies=JSON.parse(decodeURIComponent("' + encodeURIComponent(JSON.stringify(cookies)) + '"));cookies.forEach(function(cookie){document.cookie=encodeURIComponent(cookie.name)+"="+encodeURIComponent(cookie.value)+"; path=/; max-age=31536000; samesite=lax";});alert(\'✅ Cookies injetados pelo bookmarklet!\');}catch(e){alert(\'Erro ao injetar: \'+e.message);}})();';
+                navigator.clipboard.writeText(bm).then(function(){
+                  alert('✅ Bookmarklet copiado! Crie um favorito e cole esse conteúdo como URL.');
+                }, function(){
+                  alert('Falha ao copiar o bookmarklet.');
+                });
+              } catch (e) {
+                alert('Erro: ' + e.message);
+              }
+            }
+
+            function showBookmarkletLink() {
+              try {
+                const payload = encodeURIComponent(JSON.stringify(cookies));
+                const bmHref = 'javascript:(function(){try{var cookies=JSON.parse(decodeURIComponent("' + payload + '"));cookies.forEach(function(cookie){document.cookie=encodeURIComponent(cookie.name)+"="+encodeURIComponent(cookie.value)+"; path=/; max-age=31536000; samesite=lax";});alert(\'✅ Cookies injetados pelo bookmarklet!\');}catch(e){alert(\'Erro ao injetar: \' + e.message);}})();';
+                const link = document.getElementById('bookmarkletLink');
+                link.href = bmHref;
+                link.style.display = 'inline-block';
+              } catch (e) {
+                // ignore
+              }
+            }
+
+            document.addEventListener('DOMContentLoaded', function(){
+              showBookmarkletLink();
             });
-            
-            alert('✅ ' + cookies.length + ' cookies injetados com sucesso!\n\nAtualize a página para ver o resultado.');
-            
-            // Auto reload
-            setTimeout(() => {
-              window.location.href = '/';
-            }, 2000);
-          }
+
+            window.setCookiesHere = setCookiesHere;
+            window.copyBookmarklet = copyBookmarklet;
+          })();
         </script>
       </div>
     </body>
