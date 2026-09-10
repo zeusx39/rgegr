@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Cookie Share Injector",
+  "version": "1.0.0",
+  "description": "Extensão para injetar cookies salvos pelo Cookie Share diretamente em sites (requer permissões).",
+  "permissions": [
+    "cookies",
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Cookie Injector"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
