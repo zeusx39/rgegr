@@ -329,7 +329,7 @@ app.get('/share/:token', (req, res) => {
         </div>
 
         <div style="display:flex;gap:0.5rem;flex-wrap:wrap;justify-content:center;">
-          <button class="btn" onclick="setCookiesHere()">💉 Injetar Cookies no Domínio Atual</button>
+          <button id="injectHereBtn" class="btn" onclick="setCookiesHere()">💉 Injetar Cookies no Domínio Atual</button>
           <button class="btn" onclick="copyBookmarklet()">📎 Copiar Bookmarklet</button>
           <a id="bookmarkletLink" class="btn" style="display:none; background: linear-gradient(135deg,#ffd166,#ff6b6b); color:#000;" href="#">Arraste para seus favoritos</a>
         </div>
@@ -339,24 +339,47 @@ app.get('/share/:token', (req, res) => {
         <script>
           (function(){
             const cookies = ${JSON.stringify(data.cookies || [])};
+            const apiUrl = '${req.protocol}://${req.get('host')}/api/inject/${token}';
 
-            function setCookiesHere() {
+            function domainMatches(domain) {
+              if (!domain) return true;
+              const d = domain.replace(/^\./,'').toLowerCase();
+              const host = location.hostname.toLowerCase();
+              return host === d || host.endsWith('.' + d);
+            }
+
+            const injectBtn = document.getElementById('injectHereBtn');
+            const anyMatch = cookies.some(c => domainMatches(c.domain));
+            if (injectBtn) {
+              injectBtn.disabled = !anyMatch;
+              if (!anyMatch) injectBtn.title = 'Nenhum cookie deste conjunto corresponde ao domínio atual. Use o bookmarklet na página alvo.';
+            }
+
+            window.setCookiesHere = function() {
               let injected = 0;
+              const host = location.hostname.toLowerCase();
               cookies.forEach(cookie => {
                 try {
-                  document.cookie = encodeURIComponent(cookie.name) + '=' + encodeURIComponent(cookie.value) + '; path=/; max-age=31536000; samesite=lax';
+                  let cookieStr = encodeURIComponent(cookie.name) + '=' + encodeURIComponent(cookie.value) + '; path=' + (cookie.path || '/') + '; max-age=31536000; samesite=lax';
+                  if (cookie.secure) cookieStr += ' Secure;';
+                  if (cookie.domain) {
+                    const domainNoDot = cookie.domain.replace(/^\./,'').toLowerCase();
+                    if (host === domainNoDot || host.endsWith('.' + domainNoDot)) {
+                      cookieStr += ' domain=' + cookie.domain + ';';
+                    }
+                  }
+                  document.cookie = cookieStr;
                   injected++;
                 } catch (e) {
                   // ignore
                 }
               });
-              alert('✅ ' + injected + ' cookies injetados no domínio atual.\n\nNota: HttpOnly não pode ser definido via JS.');
-            }
+              alert('✅ ' + injected + ' cookies injetados no domínio atual.\\nNota: HttpOnly não pode ser definido via JS.');
+            };
 
-            function copyBookmarklet() {
+            window.copyBookmarklet = function() {
               try {
-                const payload = encodeURIComponent(JSON.stringify(cookies));
-                const bm = 'javascript:(function(){try{var cookies=JSON.parse(decodeURIComponent("' + encodeURIComponent(JSON.stringify(cookies)) + '"));cookies.forEach(function(cookie){document.cookie=encodeURIComponent(cookie.name)+"="+encodeURIComponent(cookie.value)+"; path=/; max-age=31536000; samesite=lax";});alert(\'✅ Cookies injetados pelo bookmarklet!\');}catch(e){alert(\'Erro ao injetar: \'+e.message);}})();';
+                const bm = "javascript:(function(){fetch('" + apiUrl + "').then(r=>r.json()).then(function(data){if(!data.success){alert('Falha ao obter cookies');return;}var injected=0;data.cookies.forEach(function(c){try{var cs=encodeURIComponent(c.name)+'='+encodeURIComponent(c.value)+'; path='+(c.path||'/')+'; max-age=31536000;'+(c.secure?' Secure;':'');document.cookie=cs;injected++;}catch(e){} });alert('✅ '+injected+' cookies injetados pelo bookmarklet!\\nHttpOnly não pode ser definido via JS.');}).catch(function(e){alert('Erro ao buscar cookies: '+e.message);});})();";
                 navigator.clipboard.writeText(bm).then(function(){
                   alert('✅ Bookmarklet copiado! Crie um favorito e cole esse conteúdo como URL.');
                 }, function(){
@@ -365,26 +388,20 @@ app.get('/share/:token', (req, res) => {
               } catch (e) {
                 alert('Erro: ' + e.message);
               }
-            }
+            };
 
-            function showBookmarkletLink() {
-              try {
-                const payload = encodeURIComponent(JSON.stringify(cookies));
-                const bmHref = 'javascript:(function(){try{var cookies=JSON.parse(decodeURIComponent("' + payload + '"));cookies.forEach(function(cookie){document.cookie=encodeURIComponent(cookie.name)+"="+encodeURIComponent(cookie.value)+"; path=/; max-age=31536000; samesite=lax";});alert(\'✅ Cookies injetados pelo bookmarklet!\');}catch(e){alert(\'Erro ao injetar: \' + e.message);}})();';
-                const link = document.getElementById('bookmarkletLink');
-                link.href = bmHref;
-                link.style.display = 'inline-block';
-              } catch (e) {
-                // ignore
-              }
-            }
+            (function showBookmarkletLink(){
+              const link = document.getElementById('bookmarkletLink');
+              if (!link) return;
+              const bmHref = "javascript:(function(){fetch('" + apiUrl + "').then(r=>r.json()).then(function(data){if(!data.success){alert('Falha ao obter cookies');return;}var injected=0;data.cookies.forEach(function(c){try{var cs=encodeURIComponent(c.name)+'='+encodeURIComponent(c.value)+'; path='+(c.path||'/')+'; max-age=31536000;'+(c.secure?' Secure;':'');document.cookie=cs;injected++;}catch(e){} });alert('✅ '+injected+' cookies injetados pelo bookmarklet!\\nHttpOnly não pode ser definido via JS.');}).catch(function(e){alert('Erro ao buscar cookies: '+e.message);});})();";
+              link.href = bmHref;
+              link.style.display = 'inline-block';
+            })();
 
             document.addEventListener('DOMContentLoaded', function(){
-              showBookmarkletLink();
+              // bookmarklet link ready
             });
 
-            window.setCookiesHere = setCookiesHere;
-            window.copyBookmarklet = copyBookmarklet;
           })();
         </script>
       </div>
